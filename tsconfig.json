@@ -1,0 +1,10 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "moduleResolution": "nodenext",
+    "module": "NodeNext",
+    "outDir": "dist/",
+    "declaration": true,
+  },
+  "files": ["./src/index.ts"]
+}

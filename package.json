@@ -1,0 +1,25 @@
+{
+  "name": "@deno/svelte-adapter",
+  "version": "0.0.1",
+  "type": "module",
+  "main": "dist/index.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc"
+  },
+  "keywords": ["Deno", "Svelte", "SvelteKit"],
+  "author": "",
+  "license": "MIT",
+  "description": "Deno adapter for SvelteKit",
+  "devDependencies": {
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "@sveltejs/kit": "2.x"
+  }
+}
