@@ -15,5 +15,5 @@ jobs:
       - run: deno install
       - run: deno fmt --check
       - run: deno lint
-      - run: deno test -A
+      - run: deno task test
       - run: deno task build
