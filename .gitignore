@@ -136,3 +136,6 @@ dist
 .pnp.*
 
 dist/
+.deno-deploy/
+.svelte-kit
+build/

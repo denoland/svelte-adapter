@@ -4,7 +4,8 @@
     "moduleResolution": "nodenext",
     "module": "NodeNext",
     "outDir": "dist/",
-    "declaration": true,
+    "declaration": true
   },
-  "files": ["./src/index.ts"]
+  "files": ["./src/index.ts"],
+  "exclude": ["test/fixture"]
 }
