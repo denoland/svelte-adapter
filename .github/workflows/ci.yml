@@ -12,8 +12,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
-      - run: deno install
+      - run: npm run install
       - run: deno fmt --check
       - run: deno lint
-      - run: deno task test
-      - run: deno task build
+      - run: npm test
+      - run: npm run build
