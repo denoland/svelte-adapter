@@ -9,8 +9,8 @@
       "default": "./dist/index.js"
     },
     "./__internal": {
-      "types": "./dist/internal.d.ts",
-      "default": "./dist/internal.js"
+      "types": "./dist/__internal.d.ts",
+      "default": "./dist/__internal.js"
     }
   },
   "scripts": {
