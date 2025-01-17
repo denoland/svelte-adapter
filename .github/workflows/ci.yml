@@ -12,7 +12,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: denoland/setup-deno@v2
-      - run: npm run install
+      - run: npm install
       - run: deno fmt --check
       - run: deno lint
       - run: npm test
