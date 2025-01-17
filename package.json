@@ -22,6 +22,7 @@
   "author": "",
   "license": "MIT",
   "description": "Deno adapter for SvelteKit",
+  "files": ["dist/"],
   "peerDependencies": {
     "@sveltejs/kit": "2.x"
   },
