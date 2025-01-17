@@ -134,7 +134,7 @@ export default function denoAdapter(): Adapter {
       const out = path.join(OUT_DIR, "deploy.json");
       await fsp.writeFile(out, JSON.stringify(deploy, null, 2), "utf-8");
 
-      const fileDir = path.join(import.meta.dirname, "files");
+      const fileDir = path.join(import.meta.dirname!, "files");
       builder.copy(
         path.join(fileDir, "handler.ts"),
         path.join(OUT_DIR, "handler.ts"),

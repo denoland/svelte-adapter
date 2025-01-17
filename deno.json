@@ -1,4 +1,7 @@
 {
+  "imports": {
+    "@deno/svelte-adapter/__internal": "./src/__internal.ts"
+  },
   "compilerOptions": {
     "lib": [
       "deno.window",
