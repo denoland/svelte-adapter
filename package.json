@@ -10,7 +10,8 @@
     }
   },
   "scripts": {
-    "test": "deno test -A",
+    "fixture-deps": "cd test/fixture && npm install",
+    "test": "npm run build && npm run fixture-deps && deno test -A",
     "build": "tsc && node tools/build.mjs",
     "prepublishOnly": "npm run build"
   },
