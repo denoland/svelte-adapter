@@ -1,6 +1,6 @@
 {
   "name": "@deno/svelte-adapter",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "type": "module",
   "main": "dist/index.js",
   "exports": {
@@ -22,7 +22,9 @@
   "author": "",
   "license": "MIT",
   "description": "Deno adapter for SvelteKit",
-  "files": ["dist/"],
+  "files": [
+    "dist/"
+  ],
   "peerDependencies": {
     "@sveltejs/kit": "2.x"
   },
