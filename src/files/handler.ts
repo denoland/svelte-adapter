@@ -4,7 +4,7 @@ import {
   applyConfig,
   DeployConfig,
   parseConfig,
-} from "@deno/experimental-route-config";
+} from "@deno/svelte-adapter/__internal";
 
 interface IsrConfig {
   pattern: RegExp;
