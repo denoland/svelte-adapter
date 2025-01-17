@@ -4,5 +4,8 @@
       "deno.window",
       "dom"
     ]
-  }
+  },
+  "exclude": [
+    "test/fixture/"
+  ]
 }

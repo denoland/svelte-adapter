@@ -53,6 +53,7 @@ async function withServer(fn: (origin: string) => Promise<void>) {
 }
 
 function toDom(input: string): Document {
+  // deno-lint-ignore no-explicit-any
   return (parseHTML(input) as any).document as Document;
 }
 
