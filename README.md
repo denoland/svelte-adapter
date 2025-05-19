@@ -1,6 +1,7 @@
 # Deno SvelteKit adapter
 
-Official [Deno](https://deno.com/) adapter for [SvelteKit](https://svelte.dev/docs/kit/introduction).
+Official [Deno](https://deno.com/) adapter for
+[SvelteKit](https://svelte.dev/docs/kit/introduction).
 
 ## Usage
 
