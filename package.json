@@ -1,6 +1,16 @@
 {
   "name": "@deno/svelte-adapter",
   "version": "0.0.5",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/denoland/svelte-adapter.git"
+  },
+  "bugs": {
+    "url": "https://github.com/denoland/svelte-adapter/issues"
+  },
+  "author": "the Deno authors",
+  "license": "MIT",
+  "description": "Official Deno adapter for SvelteKit",
   "type": "module",
   "main": "dist/index.js",
   "exports": {
@@ -24,9 +34,7 @@
     "Svelte",
     "SvelteKit"
   ],
-  "author": "",
-  "license": "MIT",
-  "description": "Deno adapter for SvelteKit",
+
   "files": [
     "dist/"
   ],
