@@ -33,6 +33,22 @@ pnpm install -D @deno/svelte-adapter
   export default config;
 ```
 
+3. Run the build:
+
+```sh
+deno task build
+# or
+npm run build
+# or
+pnpm run build
+```
+
+4. Run the built server:
+
+```sh
+deno run -A ./.deno-deploy/server.ts
+```
+
 ## License
 
 MIT, see the [LICENSE](./LICENSE) file.
