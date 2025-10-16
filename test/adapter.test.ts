@@ -244,8 +244,8 @@ Deno.test("Adapter - remote functions", async () => {
 
     const res = await fetch(`${origin}/_app/remote/${hash}/${remoteFunctionName}`);
     expect(res.status).toEqual(200);
-    const data = await res.text();
-    expect(data).toEqual("Hello from remote function!");
+    const data = await res.json();
+    expect(data).toEqual({ "type": "result", "result": "[\"Hello from remote function!\"]" });
 
   });
 });
