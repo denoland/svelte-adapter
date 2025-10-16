@@ -236,16 +236,22 @@ Deno.test("Adapter - remote functions", async () => {
   );
   const chunks = Array.from(Deno.readDirSync(chunksDir));
 
-  const remoteFunctionFileName = chunks.find((item) => item.name.startsWith("remote-"))!.name;
+  const remoteFunctionFileName =
+    chunks.find((item) => item.name.startsWith("remote-"))!.name;
   const hash = remoteFunctionFileName.split("remote-")[1].split(".js")[0];
-  const remoteFunctionName = Object.keys((await import(path.join(chunksDir, remoteFunctionFileName))).default)[0];
+  const remoteFunctionName = Object.keys(
+    (await import(path.join(chunksDir, remoteFunctionFileName))).default,
+  )[0];
 
   await withServer(async (origin) => {
-
-    const res = await fetch(`${origin}/_app/remote/${hash}/${remoteFunctionName}`);
+    const res = await fetch(
+      `${origin}/_app/remote/${hash}/${remoteFunctionName}`,
+    );
     expect(res.status).toEqual(200);
     const data = await res.json();
-    expect(data).toEqual({ "type": "result", "result": "[\"Hello from remote function!\"]" });
-
+    expect(data).toEqual({
+      "type": "result",
+      "result": '["Hello from remote function!"]',
+    });
   });
 });
