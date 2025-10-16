@@ -226,3 +226,26 @@ Deno.test("Adapter - ISR only specific search params", async () => {
     }
   });
 });
+
+Deno.test("Adapter - remote functions", async () => {
+  const chunksDir = path.join(
+    cwd,
+    ".deno-deploy",
+    "server",
+    "chunks",
+  );
+  const chunks = Array.from(Deno.readDirSync(chunksDir));
+
+  const remoteFunctionFileName = chunks.find((item) => item.name.startsWith("remote-"))!.name;
+  const hash = remoteFunctionFileName.split("remote-")[1].split(".js")[0];
+  const remoteFunctionName = Object.keys((await import(path.join(chunksDir, remoteFunctionFileName))).default)[0];
+
+  await withServer(async (origin) => {
+
+    const res = await fetch(`${origin}/_app/remote/${hash}/${remoteFunctionName}`);
+    expect(res.status).toEqual(200);
+    const data = await res.text();
+    expect(data).toEqual("Hello from remote function!");
+
+  });
+});
