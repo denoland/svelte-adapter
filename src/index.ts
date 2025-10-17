@@ -99,8 +99,8 @@ export default function denoAdapter(): Adapter {
       );
 
       staticFiles.push({
-        source: "/_app/:file*",
-        destination: ".deno-deploy/static/_app/:file*",
+        source: "/_app/immutable/:file*",
+        destination: ".deno-deploy/static/_app/immutable/:file*",
       });
 
       // Collect all remaining asset files
