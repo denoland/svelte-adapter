@@ -38,7 +38,7 @@
     "dist/"
   ],
   "peerDependencies": {
-    "@sveltejs/kit": "2.x"
+    "@sveltejs/kit": "^2.31.0"
   },
   "dependencies": {
     "@deno/experimental-route-config": "^0.0.5"

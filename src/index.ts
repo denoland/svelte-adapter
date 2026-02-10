@@ -149,6 +149,10 @@ export default function denoAdapter(): Adapter {
         // Deno Deploy V2 always supports reading from the file system
         return true;
       },
+      instrumentation() {
+        // Does it support SvelteKit's built-in observability features
+        return true;
+      },
     },
   };
 }
