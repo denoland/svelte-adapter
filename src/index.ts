@@ -48,6 +48,17 @@ export default function denoAdapter(): Adapter {
       builder.log.minor("Building server entry...");
       builder.writeServer(dirs.server);
 
+      if (builder.hasServerInstrumentationFile()) {
+        builder.log.minor("Instrumenting server...");
+        builder.instrument({
+          entrypoint: `${dirs.server}/index.js`,
+          instrumentation: `${dirs.server}/instrumentation.server.js`,
+          module: {
+            exports: ["Server"],
+          },
+        });
+      }
+
       const staticFiles: DeployConfig["staticFiles"] = [];
       const redirects: DeployConfig["redirects"] = [];
       const rewrites: DeployConfig["rewrites"] = [];
