@@ -24,8 +24,8 @@
     }
   },
   "scripts": {
-    "fixture-deps": "cd test/fixture && npm install && npm run build",
-    "test": "npm run build && npm run fixture-deps && deno test -A",
+    "fixture-deps": "cd test/fixture && npm ci",
+    "test": "deno test -A",
     "build": "tsc && node tools/build.mjs",
     "prepublishOnly": "npm run build"
   },

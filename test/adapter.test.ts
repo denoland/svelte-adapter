@@ -1,19 +1,48 @@
-import path from "node:path";
 import { expect } from "expect";
 import { parseHTML } from "linkedom";
+import path from "node:path";
 
 const cwd = path.join(import.meta.dirname!, "fixture");
 
-// Build package
-await new Deno.Command("npm", {
-  args: ["run", "build"],
-  cwd: Deno.cwd(),
-}).output();
-// Build fixture
-await new Deno.Command("npm", {
-  args: ["run", "build"],
-  cwd,
-}).output();
+async function removeIfExists(dir: string) {
+  try {
+    await Deno.remove(dir, { recursive: true });
+  } catch (e) {
+    if (!(e instanceof Deno.errors.NotFound)) throw e;
+  }
+}
+
+Deno.test.beforeAll(async () => {
+  await new Deno.Command("npm", {
+    args: ["run", "build"],
+    cwd: Deno.cwd(),
+  })
+    .output();
+  await new Deno.Command("npm", {
+    args: ["run", "fixture-deps"],
+    cwd: Deno.cwd(),
+  })
+    .output();
+});
+
+Deno.test.afterAll(async () => {
+  await removeIfExists(path.join(cwd, "node_modules"));
+});
+
+Deno.test.beforeEach(async () => {
+  await new Deno.Command("npm", {
+    args: ["run", "build"],
+    cwd,
+  }).output();
+});
+
+Deno.test.afterEach(async () => {
+  await Promise.all(
+    [".deno-deploy", ".svelte-kit"].map((dir) =>
+      removeIfExists(path.join(cwd, dir))
+    ),
+  );
+});
 
 async function withServer(fn: (origin: string) => Promise<void>) {
   // Intentionally confuse type checker so that it ignores this import
@@ -254,4 +283,67 @@ Deno.test("Adapter - remote functions", async () => {
       "result": '["Hello from remote function!"]',
     });
   });
+});
+
+Deno.test("Adapter - instrumentation is included when available", () => {
+  const files = Array.from(Deno.readDirSync(
+    path.join(cwd, ".deno-deploy", "server"),
+  ));
+
+  expect(files).toEqual(
+    expect.arrayContaining([
+      expect.objectContaining({
+        name: "instrumentation.server.js",
+        isFile: true,
+      }),
+      expect.objectContaining({
+        name: "start.js",
+        isFile: true,
+      }),
+    ]),
+  );
+
+  const instrumentationFile = Deno.readTextFileSync(path.join(
+    cwd,
+    ".deno-deploy",
+    "server",
+    "instrumentation.server.js",
+  ));
+  expect(instrumentationFile.length).toBeGreaterThan(0);
+  expect(instrumentationFile).toContain("DENO_SVELTE_ADAPTER_INSTRUMENTATION");
+});
+
+Deno.test("Adapter - instrumentation is not included when not available", async () => {
+  const instPath = path.join(cwd, "src", "instrumentation.server.ts");
+  const content = Deno.readTextFileSync(instPath);
+  try {
+    await removeIfExists(instPath);
+    await new Deno.Command("npm", {
+      args: ["run", "build"],
+      cwd,
+    }).output();
+
+    const files = Array.from(
+      Deno.readDirSync(path.join(cwd, ".deno-deploy", "server")),
+    );
+
+    ["instrumentation.server.js", "start.js"].map((name) => {
+      expect(files).not.toContainEqual(
+        expect.objectContaining({ name, isFile: true }),
+      );
+    });
+  } finally {
+    Deno.writeTextFileSync(instPath, content);
+  }
+});
+
+Deno.test("Adapter - instrumentation runs before app", () => {
+  const content = Deno.readTextFileSync(
+    path.join(cwd, ".deno-deploy", "server", "index.js"),
+  );
+  expect(content).toContain("./instrumentation.server.js");
+  expect(content).toContain("./start.js");
+  expect(content.indexOf("./instrumentation.server.js")).toBeLessThan(
+    content.indexOf("./start.js"),
+  );
 });
