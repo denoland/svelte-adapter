@@ -1,6 +1,6 @@
-import path from "node:path";
 import { expect } from "expect";
 import { parseHTML } from "linkedom";
+import path from "node:path";
 
 const cwd = path.join(import.meta.dirname!, "fixture");
 
@@ -15,7 +15,10 @@ await new Deno.Command("npm", {
   cwd,
 }).output();
 
-async function withServer(fn: (origin: string) => Promise<void>) {
+async function withServer(
+  fn: (origin: string) => Promise<void>,
+  env?: Record<string, string>,
+) {
   // Intentionally confuse type checker so that it ignores this import
   const file = "handler.ts";
   const specifier = `./fixture/.deno-deploy/${file}`;
@@ -26,29 +29,52 @@ async function withServer(fn: (origin: string) => Promise<void>) {
   const deployConfig = await import("./fixture/.deno-deploy/deploy.json", {
     with: { type: "json" },
   });
-  const handler = mod.prepareServer(
-    svelteData.default,
-    deployConfig.default,
-    cwd,
-  );
 
-  // const server = new FakeServer(handler);
-  const inst = await new Promise<
-    { server: () => Deno.HttpServer<Deno.NetAddr>; addr: Deno.NetAddr }
-  >((resolve) => {
-    const server = Deno.serve({
-      port: 0,
-      onListen: (addr) => {
-        resolve({ server: () => server, addr });
-      },
-    }, handler);
-  });
+  const previousEnv: Record<string, string | undefined> = {};
+  if (env) {
+    for (const key of Object.keys(env)) {
+      previousEnv[key] = Deno.env.get(key);
+    }
+    for (const [key, value] of Object.entries(env)) {
+      Deno.env.set(key, value);
+    }
+  }
 
-  const origin = `http://${inst.addr.hostname}:${inst.addr.port}`;
   try {
-    await fn(origin);
+    const handler = mod.prepareServer(
+      svelteData.default,
+      deployConfig.default,
+      cwd,
+    );
+
+    // const server = new FakeServer(handler);
+    const inst = await new Promise<
+      { server: () => Deno.HttpServer<Deno.NetAddr>; addr: Deno.NetAddr }
+    >((resolve) => {
+      const server = Deno.serve({
+        port: 0,
+        onListen: (addr) => {
+          resolve({ server: () => server, addr });
+        },
+      }, handler);
+    });
+
+    const origin = `http://${inst.addr.hostname}:${inst.addr.port}`;
+    try {
+      await fn(origin);
+    } finally {
+      await inst.server().shutdown();
+    }
   } finally {
-    await inst.server().shutdown();
+    if (env) {
+      for (const [key, value] of Object.entries(previousEnv)) {
+        if (value === undefined) {
+          Deno.env.delete(key);
+        } else {
+          Deno.env.set(key, value);
+        }
+      }
+    }
   }
 }
 
@@ -225,6 +251,30 @@ Deno.test("Adapter - ISR only specific search params", async () => {
       expect(newTime).not.toEqual(renderTime);
     }
   });
+});
+
+Deno.test("Adapter - Successfully protects against CSRF when ORIGIN is set", async () => {
+  const trustedOrigin = "https://foo.bar";
+  await withServer(async (serverOrigin) => {
+    const res = await fetch(`${serverOrigin}/origin-check`);
+    expect(res.status).toEqual(200);
+    const document = toDom(await res.text());
+    const seenOrigin = document.querySelector("[data-origin]")?.textContent
+      ?.trim();
+    expect(serverOrigin).not.toEqual(trustedOrigin);
+    expect(seenOrigin).toEqual(trustedOrigin);
+  }, {
+    ORIGIN: trustedOrigin,
+  });
+});
+
+Deno.test("Adapter - Fails to set up the server when ORIGIN is invalid", async () => {
+  await expect(
+    withServer(
+      () => Promise.resolve(),
+      { ORIGIN: "ftp://foo.bar" },
+    ),
+  ).rejects.toThrow();
 });
 
 Deno.test("Adapter - remote functions", async () => {
