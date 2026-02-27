@@ -123,6 +123,18 @@ Deno.test("Adapter - serve static file: robots.txt (content)", async () => {
   });
 });
 
+Deno.test("Adapter - serve static file: service-worker.js (generated)", async () => {
+  await withServer(async (origin) => {
+    const res = await fetch(`${origin}/service-worker.js`);
+
+    expect(res.status).toEqual(200);
+    expect(res.headers.get("Content-Type")).toEqual(
+      "text/javascript; charset=utf-8",
+    );
+    expect(await res.text()).toContain("Placeholder service worker");
+  });
+});
+
 Deno.test("Adapter - serve static files with cache headers", async () => {
   const immutableDir = path.join(
     cwd,
