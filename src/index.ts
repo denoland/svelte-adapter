@@ -103,17 +103,18 @@ export default function denoAdapter(): Adapter {
         destination: ".deno-deploy/static/_app/immutable/:file*",
       });
 
-      // Collect all remaining asset files
-      const assetDir = builder.config.kit.files.assets;
+      // Add assets from manifest
+      const manifestPath = path.join(
+        builder.getServerDirectory(),
+        "manifest.js",
+      );
+      const manifest = (await import(manifestPath)).manifest;
+      const assets = manifest.assets;
 
-      // TODO: What about generated assets
-      const assets: string[] = [];
-      await walk(assetDir, assets);
       for (const asset of assets) {
-        const rel = path.relative(assetDir, asset);
         staticFiles.push({
-          source: `/${rel.replace(/\\+/, "/")}`,
-          destination: path.join(dirs.static, rel),
+          source: `/${asset.replace(/\\+/, "/")}`,
+          destination: path.join(dirs.static, asset),
         });
       }
 
@@ -151,14 +152,4 @@ export default function denoAdapter(): Adapter {
       },
     },
   };
-}
-
-async function walk(dir: string, result: string[]): Promise<void> {
-  for (const entry of await fsp.readdir(dir, { withFileTypes: true })) {
-    if (entry.isDirectory()) {
-      await walk(path.join(dir, entry.name), result);
-    } else if (entry.isFile()) {
-      result.push(path.join(dir, entry.name));
-    }
-  }
 }
