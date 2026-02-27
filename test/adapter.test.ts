@@ -57,6 +57,22 @@ function toDom(input: string): Document {
   return (parseHTML(input) as any).document as Document;
 }
 
+async function collectStaticFiles(
+  dir: string,
+  base: string = dir,
+): Promise<string[]> {
+  const files: string[] = [];
+  for await (const entry of Deno.readDir(dir)) {
+    const fullPath = `${dir}/${entry.name}`;
+    if (entry.isDirectory) {
+      files.push(...await collectStaticFiles(fullPath, base));
+    } else {
+      files.push(fullPath.slice(base.length + 1));
+    }
+  }
+  return files;
+}
+
 Deno.test("Adapter - starts", async () => {
   await withServer(async (origin) => {
     const res = await fetch(`${origin}/`);
@@ -81,7 +97,21 @@ Deno.test("Adapter - redirects /about/ -> /about", async () => {
   });
 });
 
-Deno.test("Adapter - serve static files from root", async () => {
+const staticFiles = await collectStaticFiles(
+  new URL("fixture/static", import.meta.url).pathname,
+);
+
+for (const file of staticFiles) {
+  Deno.test(`Adapter - serve static file: ${file}`, async () => {
+    await withServer(async (origin) => {
+      const res = await fetch(`${origin}/${file}`);
+      expect(res.status).toEqual(200);
+      await res.body?.cancel();
+    });
+  });
+}
+
+Deno.test("Adapter - serve static file: robots.txt (content)", async () => {
   await withServer(async (origin) => {
     const res = await fetch(`${origin}/robots.txt`);
 
