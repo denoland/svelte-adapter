@@ -111,11 +111,7 @@ export default function denoAdapter(): Adapter {
       await walk(assetDir, assets);
       for (const asset of assets) {
         const rel = path.relative(assetDir, asset);
-        const encodedRel = rel
-          .split("/")
-          .map(encodeURIComponent)
-          .join("/")
-          .replace(/\\+/, "/");
+        const encodedRel = encodeAssetRelativePath(rel);
         staticFiles.push({
           source: `/${encodedRel}`,
           destination: path.join(dirs.static, rel),
@@ -166,4 +162,12 @@ async function walk(dir: string, result: string[]): Promise<void> {
       result.push(path.join(dir, entry.name));
     }
   }
+}
+
+export function encodeAssetRelativePath(rel: string): string {
+  return rel
+    .replace(/\\+/g, "/")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
 }
