@@ -48,9 +48,12 @@ export default function denoAdapter(): Adapter {
       builder.log.minor("Building server entry...");
       builder.writeServer(dirs.server);
 
-      if (builder.hasServerInstrumentationFile()) {
+      // SvelteKit added these builder APIs in 2.31. Because `@sveltejs/kit` is a
+      // peer dependency, older versions may still be installed (npm warns only).
+      // Guard the call to avoid crashing on older Kit versions.
+      if (builder.hasServerInstrumentationFile?.()) {
         builder.log.minor("Instrumenting server...");
-        builder.instrument({
+        builder.instrument?.({
           entrypoint: `${dirs.server}/index.js`,
           instrumentation: `${dirs.server}/instrumentation.server.js`,
           module: {
