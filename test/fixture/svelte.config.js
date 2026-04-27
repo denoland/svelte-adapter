@@ -14,6 +14,7 @@ const config = {
     adapter: adapter(),
     experimental: {
       remoteFunctions: true,
+      instrumentation: { server: true },
     },
   },
   compilerOptions: {

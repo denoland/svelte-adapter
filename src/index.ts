@@ -48,6 +48,20 @@ export default function denoAdapter(): Adapter {
       builder.log.minor("Building server entry...");
       builder.writeServer(dirs.server);
 
+      // SvelteKit added these builder APIs in 2.31. Because `@sveltejs/kit` is a
+      // peer dependency, older versions may still be installed (npm warns only).
+      // Guard the call to avoid crashing on older Kit versions.
+      if (builder.hasServerInstrumentationFile?.()) {
+        builder.log.minor("Instrumenting server...");
+        builder.instrument?.({
+          entrypoint: `${dirs.server}/index.js`,
+          instrumentation: `${dirs.server}/instrumentation.server.js`,
+          module: {
+            exports: ["Server"],
+          },
+        });
+      }
+
       const staticFiles: DeployConfig["staticFiles"] = [];
       const redirects: DeployConfig["redirects"] = [];
       const rewrites: DeployConfig["rewrites"] = [];
@@ -148,6 +162,10 @@ export default function denoAdapter(): Adapter {
     supports: {
       read() {
         // Deno Deploy V2 always supports reading from the file system
+        return true;
+      },
+      instrumentation() {
+        // Does it support SvelteKit's built-in observability features
         return true;
       },
     },
