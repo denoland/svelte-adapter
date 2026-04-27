@@ -70,7 +70,7 @@ export function prepareServer(
     }
 
     return new Request(
-      new URL(`${url.pathname}${url.search}${url.hash}`, origin),
+      new URL(`${url.pathname}${url.search}`, origin),
       request,
     );
   };
