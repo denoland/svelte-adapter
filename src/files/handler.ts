@@ -47,6 +47,7 @@ export function prepareServer(
 
   const deployConfig = parseConfig(rawDeployConfig, cwd);
   const server = new Server(manifest);
+  const origin = parseOrigin(Deno.env.get("ORIGIN"));
 
   const initialized = server.init({
     env: Deno.env.toObject(),
@@ -62,6 +63,17 @@ export function prepareServer(
   const initCache = hasIsr
     ? caches.open("svelte-isr") // TODO: Are caches global?
     : Promise.resolve(null);
+
+  const normalizeRequest = (url: URL, request: Request): Request => {
+    if (origin === undefined || origin === url.origin) {
+      return request;
+    }
+
+    return new Request(
+      new URL(`${url.pathname}${url.search}`, origin),
+      request,
+    );
+  };
 
   const handler: Deno.ServeHandler = async (req, info) => {
     await initialized;
@@ -86,7 +98,7 @@ export function prepareServer(
       return responded;
     }
 
-    const res = await server.respond(req, {
+    const res = await server.respond(normalizeRequest(url, req), {
       getClientAddress() {
         if ("hostname" in info.remoteAddr) {
           return info.remoteAddr.hostname;
@@ -158,4 +170,29 @@ function toCacheKey(url: URL, config: IsrConfig): Request {
   }
 
   return new Request(newUrl);
+}
+
+function parseOrigin(origin?: string): string | undefined {
+  if (origin === undefined || origin === "") {
+    return undefined;
+  }
+
+  try {
+    const url = new URL(origin.trim());
+
+    if (!["http:", "https:"].includes(url.protocol)) {
+      throw new Error(
+        `Invalid ORIGIN: ${origin}. Only http and https are supported. Received protocol: ${url.protocol}`,
+      );
+    }
+    return url.origin;
+  } catch (error) {
+    if (error instanceof TypeError) {
+      throw new Error(
+        `Invalid ORIGIN: ${origin}. ORIGIN must be a valid URL with http:// or https:// protocol.`,
+        { cause: error },
+      );
+    }
+    throw error;
+  }
 }
