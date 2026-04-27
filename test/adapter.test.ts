@@ -93,6 +93,14 @@ Deno.test("Adapter - serve static files from root", async () => {
   });
 });
 
+Deno.test("Adapter - serve static files with space in path (URL-encoded)", async () => {
+  await withServer(async (origin) => {
+    const res = await fetch(`${origin}/foo%20bar/baz.txt`);
+    expect(res.status).toEqual(200);
+    expect(await res.text()).toContain("quux");
+  });
+});
+
 Deno.test("Adapter - serve static files with cache headers", async () => {
   const immutableDir = path.join(
     cwd,

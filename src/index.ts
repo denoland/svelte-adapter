@@ -1,7 +1,7 @@
-import type { Adapter } from "@sveltejs/kit";
-import path from "node:path";
-import fsp from "node:fs/promises";
 import { type DeployConfig } from "@deno/experimental-route-config";
+import type { Adapter } from "@sveltejs/kit";
+import fsp from "node:fs/promises";
+import path from "node:path";
 
 const OUT_DIR = ".deno-deploy";
 
@@ -111,8 +111,9 @@ export default function denoAdapter(): Adapter {
       await walk(assetDir, assets);
       for (const asset of assets) {
         const rel = path.relative(assetDir, asset);
+        const encodedRel = encodeAssetRelativePath(rel);
         staticFiles.push({
-          source: `/${rel.replace(/\\+/, "/")}`,
+          source: `/${encodedRel}`,
           destination: path.join(dirs.static, rel),
         });
       }
@@ -161,4 +162,12 @@ async function walk(dir: string, result: string[]): Promise<void> {
       result.push(path.join(dir, entry.name));
     }
   }
+}
+
+export function encodeAssetRelativePath(rel: string): string {
+  return rel
+    .replace(/\\+/g, "/")
+    .split("/")
+    .map(encodeURIComponent)
+    .join("/");
 }
