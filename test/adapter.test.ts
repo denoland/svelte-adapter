@@ -13,35 +13,23 @@ async function removeIfExists(dir: string) {
 }
 
 Deno.test.beforeAll(async () => {
+  // build package
   await new Deno.Command("npm", {
     args: ["run", "build"],
     cwd: Deno.cwd(),
   })
     .output();
+  // install fixture deps
   await new Deno.Command("npm", {
     args: ["run", "fixture-deps"],
     cwd: Deno.cwd(),
   })
     .output();
-});
-
-Deno.test.afterAll(async () => {
-  await removeIfExists(path.join(cwd, "node_modules"));
-});
-
-Deno.test.beforeEach(async () => {
+  // build fixture
   await new Deno.Command("npm", {
     args: ["run", "build"],
     cwd,
   }).output();
-});
-
-Deno.test.afterEach(async () => {
-  await Promise.all(
-    [".deno-deploy", ".svelte-kit"].map((dir) =>
-      removeIfExists(path.join(cwd, dir))
-    ),
-  );
 });
 
 async function withServer(fn: (origin: string) => Promise<void>) {
@@ -334,6 +322,10 @@ Deno.test("Adapter - instrumentation is not included when not available", async 
     });
   } finally {
     Deno.writeTextFileSync(instPath, content);
+    await new Deno.Command("npm", {
+      args: ["run", "build"],
+      cwd,
+    }).output();
   }
 });
 
