@@ -3,6 +3,7 @@ import { parseHTML } from "linkedom";
 import path from "node:path";
 
 const cwd = path.join(import.meta.dirname!, "fixture");
+const OUT_DIR = ".deno-deploy";
 
 async function removeIfExists(dir: string) {
   try {
@@ -38,12 +39,12 @@ async function withServer(
 ) {
   // Intentionally confuse type checker so that it ignores this import
   const file = "handler.ts";
-  const specifier = `./fixture/.deno-deploy/${file}`;
+  const specifier = `./fixture/${OUT_DIR}/${file}`;
   const mod = await import(specifier);
-  const svelteData = await import("./fixture/.deno-deploy/svelte.json", {
+  const svelteData = await import(`./fixture/${OUT_DIR}/svelte.json`, {
     with: { type: "json" },
   });
-  const deployConfig = await import("./fixture/.deno-deploy/deploy.json", {
+  const deployConfig = await import(`./fixture/${OUT_DIR}/deploy.json`, {
     with: { type: "json" },
   });
 
@@ -147,7 +148,7 @@ Deno.test("Adapter - serve static files with space in path (URL-encoded)", async
 Deno.test("Adapter - serve static files with cache headers", async () => {
   const immutableDir = path.join(
     cwd,
-    ".deno-deploy",
+    OUT_DIR,
     "static",
     "_app",
     "immutable",
@@ -305,7 +306,7 @@ Deno.test("Adapter - Fails to set up the server when ORIGIN is invalid", async (
 Deno.test("Adapter - remote functions", async () => {
   const chunksDir = path.join(
     cwd,
-    ".deno-deploy",
+    OUT_DIR,
     "server",
     "chunks",
   );
@@ -333,7 +334,7 @@ Deno.test("Adapter - remote functions", async () => {
 
 Deno.test("Adapter - instrumentation is included when available", () => {
   const files = Array.from(Deno.readDirSync(
-    path.join(cwd, ".deno-deploy", "server"),
+    path.join(cwd, OUT_DIR, "server"),
   ));
 
   expect(files).toEqual(
@@ -351,7 +352,7 @@ Deno.test("Adapter - instrumentation is included when available", () => {
 
   const instrumentationFile = Deno.readTextFileSync(path.join(
     cwd,
-    ".deno-deploy",
+    OUT_DIR,
     "server",
     "instrumentation.server.js",
   ));
@@ -370,7 +371,7 @@ Deno.test("Adapter - instrumentation is not included when not available", async 
     }).output();
 
     const files = Array.from(
-      Deno.readDirSync(path.join(cwd, ".deno-deploy", "server")),
+      Deno.readDirSync(path.join(cwd, OUT_DIR, "server")),
     );
 
     ["instrumentation.server.js", "start.js"].map((name) => {
@@ -389,11 +390,114 @@ Deno.test("Adapter - instrumentation is not included when not available", async 
 
 Deno.test("Adapter - instrumentation runs before app", () => {
   const content = Deno.readTextFileSync(
-    path.join(cwd, ".deno-deploy", "server", "index.js"),
+    path.join(cwd, OUT_DIR, "server", "index.js"),
   );
   expect(content).toContain("./instrumentation.server.js");
   expect(content).toContain("./start.js");
   expect(content.indexOf("./instrumentation.server.js")).toBeLessThan(
     content.indexOf("./start.js"),
   );
+});
+
+const OUT_DIRS_OUTSIDE_ROOT = ["", ".", "./", "..", "../..", "build/..", "/"];
+
+class HaltedAfterOutDirDecision extends Error {}
+
+function builderHaltingAfterOutDirDecision() {
+  const rimrafed: string[] = [];
+  const warnings: string[] = [];
+  return {
+    rimrafed,
+    warnings,
+    builder: {
+      rimraf: (dir: string) => rimrafed.push(dir),
+      log: { warn: (msg: string) => warnings.push(msg), minor: () => {} },
+      get config(): never {
+        throw new HaltedAfterOutDirDecision();
+      },
+    },
+  };
+}
+
+function importAfterBuild(specifier: string) {
+  return import(specifier);
+}
+
+async function loadAdapter() {
+  return (await importAfterBuild("../dist/index.js")).default;
+}
+
+Deno.test("Adapter - leaves out dirs outside the project root alone", async () => {
+  const denoAdapter = await loadAdapter();
+
+  for (const out of OUT_DIRS_OUTSIDE_ROOT) {
+    const { rimrafed, warnings, builder } = builderHaltingAfterOutDirDecision();
+
+    await expect(denoAdapter({ out }).adapt(builder)).rejects.toThrow(
+      HaltedAfterOutDirDecision,
+    );
+
+    expect(rimrafed).toEqual([]);
+    expect(warnings).toEqual([
+      `out dir ${out} is not inside the project root and will not be emptied.`,
+    ]);
+  }
+});
+
+Deno.test("Adapter - empties out dirs inside the project root", async () => {
+  const denoAdapter = await loadAdapter();
+  const { rimrafed, warnings, builder } = builderHaltingAfterOutDirDecision();
+
+  await expect(denoAdapter({ out: OUT_DIR }).adapt(builder)).rejects.toThrow(
+    HaltedAfterOutDirDecision,
+  );
+
+  expect(rimrafed).toEqual([OUT_DIR]);
+  expect(warnings).toEqual([]);
+});
+
+Deno.test("Adapter - writes the build to a custom out dir", async () => {
+  const customOut = ".deno-deploy-custom";
+  const customDir = path.join(cwd, customOut);
+
+  try {
+    const build = await new Deno.Command("npm", {
+      args: ["run", "build"],
+      cwd,
+      env: { ...Deno.env.toObject(), SVELTE_ADAPTER_OUT: customOut },
+    }).output();
+
+    if (build.code !== 0) {
+      throw new Error(new TextDecoder().decode(build.stderr));
+    }
+
+    const entries = Array.from(Deno.readDirSync(customDir)).map((e) => e.name);
+    expect(entries).toEqual(
+      expect.arrayContaining([
+        "deploy.json",
+        "handler.ts",
+        "server",
+        "server.ts",
+        "static",
+        "svelte.json",
+      ]),
+    );
+
+    const deployConfig = JSON.parse(
+      Deno.readTextFileSync(path.join(customDir, "deploy.json")),
+    );
+
+    const immutable = deployConfig.staticFiles.find(
+      (entry: { source: string }) => entry.source === "/_app/immutable/:file*",
+    );
+    expect(immutable?.destination).toEqual(
+      `${customOut}/static/_app/immutable/:file*`,
+    );
+
+    for (const entry of deployConfig.staticFiles) {
+      expect(entry.destination.startsWith(`${customOut}/`)).toBe(true);
+    }
+  } finally {
+    await removeIfExists(customDir);
+  }
 });
