@@ -14,26 +14,41 @@ export interface Config {
 }
 
 interface SvelteData {
-  isr: Array<
-    {
-      pattern: { source: string; flags: string };
-      expiration: number;
-      bypassToken: string;
-      allowQuery: string[];
-    }
-  >;
+  isr: Array<{
+    pattern: { source: string; flags: string };
+    expiration: number;
+    bypassToken: string;
+    allowQuery: string[];
+  }>;
 }
 
-export default function denoAdapter(): Adapter {
+export interface AdapterConfig {
+  /** Adapter output directory, relative to the project root.
+   *
+   * Mirrors Vite's `build.emptyOutDir`: the directory is emptied before each
+   * build only when it is inside the project root. Anywhere else it is written
+   * to but never cleared, so stale files accumulate.
+   *
+   * @default `.deno-deploy`
+   */
+  out?: string;
+}
+
+export default function denoAdapter(
+  { out = OUT_DIR }: AdapterConfig = {},
+): Adapter {
   return {
     name: "@deno/svelte-adapter",
     async adapt(builder) {
-      builder.rimraf(OUT_DIR);
+      if (isInsideProjectRoot(out)) {
+        builder.rimraf(out);
+      } else {
+        builder.log.warn(
+          `out dir ${out} is not inside the project root and will not be emptied.`,
+        );
+      }
 
-      const dirs = {
-        static: `${OUT_DIR}/static${builder.config.kit.paths.base}`,
-        server: `${OUT_DIR}/server`,
-      };
+      const dirs = outputDirs(out, builder.config.kit.paths.base);
 
       try {
         await fsp.mkdir(dirs.server, { recursive: true });
@@ -105,7 +120,7 @@ export default function denoAdapter(): Adapter {
           });
         }
       }
-      const svelteMetaPath = path.join(OUT_DIR, "svelte.json");
+      const svelteMetaPath = path.join(out, "svelte.json");
       await fsp.writeFile(
         svelteMetaPath,
         JSON.stringify(svelteData, null, 2),
@@ -114,7 +129,7 @@ export default function denoAdapter(): Adapter {
 
       staticFiles.push({
         source: "/_app/immutable/:file*",
-        destination: ".deno-deploy/static/_app/immutable/:file*",
+        destination: `${dirs.static}/_app/immutable/:file*`,
       });
 
       // Collect all remaining asset files
@@ -133,30 +148,36 @@ export default function denoAdapter(): Adapter {
       }
 
       const deploy: DeployConfig = {
-        headers: [{
-          source: "/_app/immutable/:file*",
-          headers: [
-            {
-              key: "Cache-Control",
-              value: "public, immutable, max-age=31536000",
-            },
-          ],
-        }],
+        headers: [
+          {
+            source: "/_app/immutable/:file*",
+            headers: [
+              {
+                key: "Cache-Control",
+                value: "public, immutable, max-age=31536000",
+              },
+            ],
+          },
+        ],
         redirects,
         rewrites,
         staticFiles,
       };
-      const out = path.join(OUT_DIR, "deploy.json");
-      await fsp.writeFile(out, JSON.stringify(deploy, null, 2), "utf-8");
+      const deployConfigPath = path.join(out, "deploy.json");
+      await fsp.writeFile(
+        deployConfigPath,
+        JSON.stringify(deploy, null, 2),
+        "utf-8",
+      );
 
       const fileDir = path.join(import.meta.dirname!, "files");
       builder.copy(
         path.join(fileDir, "handler.ts"),
-        path.join(OUT_DIR, "handler.ts"),
+        path.join(out, "handler.ts"),
       );
       builder.copy(
         path.join(fileDir, "server.ts"),
-        path.join(OUT_DIR, "server.ts"),
+        path.join(out, "server.ts"),
       );
     },
     supports: {
@@ -182,10 +203,21 @@ async function walk(dir: string, result: string[]): Promise<void> {
   }
 }
 
+export function outputDirs(
+  out: string,
+  base: string,
+): { static: string; server: string } {
+  return {
+    static: path.join(out, "static", base),
+    server: path.join(out, "server"),
+  };
+}
+
+export function isInsideProjectRoot(dir: string): boolean {
+  const root = path.resolve(".");
+  return path.resolve(dir).startsWith(root + path.sep);
+}
+
 export function encodeAssetRelativePath(rel: string): string {
-  return rel
-    .replace(/\\+/g, "/")
-    .split("/")
-    .map(encodeURIComponent)
-    .join("/");
+  return rel.replace(/\\+/g, "/").split("/").map(encodeURIComponent).join("/");
 }
