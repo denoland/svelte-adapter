@@ -324,10 +324,11 @@ Deno.test("Adapter - remote functions", async () => {
     );
     expect(res.status).toEqual(200);
     const data = await res.json();
-    expect(data).toEqual({
-      "type": "result",
-      "result": '["Hello from remote function!"]',
-    });
+    // The serialized payload format is a SvelteKit internal detail that
+    // changes between versions (`result` vs `data`), so only check that the
+    // remote function's return value made it into the response.
+    expect(data.type).toEqual("result");
+    expect(data.data ?? data.result).toContain("Hello from remote function!");
   });
 });
 
